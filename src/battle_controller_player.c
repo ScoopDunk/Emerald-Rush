@@ -1014,7 +1014,7 @@ static void Intro_TryShinyAnimShowHealthbox(void)
     if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].waitForCry
         && gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].healthboxSlideInStarted
         && !gBattleSpritesDataPtr->healthBoxesData[BATTLE_PARTNER(gActiveBattler)].waitForCry
-        && !IsCryPlayingOrClearCrySongs())
+        && !BattleShouldWaitForCry())
     {
         if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].bgmRestored)
         {
@@ -1087,7 +1087,7 @@ static void SwitchIn_CleanShinyAnimShowSubstitute(void)
 static void SwitchIn_HandleSoundAndEnd(void)
 {
     if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].specialAnimActive
-        && !IsCryPlayingOrClearCrySongs())
+        && !BattleShouldWaitForCry())
     {
         m4aMPlayVolumeControl(&gMPlayInfo_BGM, TRACKS_ALL, 0x100);
         HandleLowHpMusicChange(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], gActiveBattler);
@@ -1402,7 +1402,7 @@ static void DoHitAnimBlinkSpriteEffect(void)
 {
     u8 spriteId = gBattlerSpriteIds[gActiveBattler];
 
-    if (gSprites[spriteId].data[1] == 32)
+    if (gSprites[spriteId].data[1] >= FB_HIT_BLINK_FRAMES)
     {
         gSprites[spriteId].data[1] = 0;
         gSprites[spriteId].invisible = FALSE;
@@ -2329,7 +2329,7 @@ static void PlayerHandleDrawTrainerPic(void)
         gSprites[gBattlerSpriteIds[gActiveBattler]].oam.paletteNum = IndexOfSpritePaletteTag(gTrainerFrontPicPaletteTable[trainerPicId].tag);
         gSprites[gBattlerSpriteIds[gActiveBattler]].x2 = DISPLAY_WIDTH;
         gSprites[gBattlerSpriteIds[gActiveBattler]].y2 = 48;
-        gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -2;
+        gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -FB_INTRO_SLIDE_SPEED;
         gSprites[gBattlerSpriteIds[gActiveBattler]].callback = SpriteCB_TrainerSlideIn;
         gSprites[gBattlerSpriteIds[gActiveBattler]].oam.affineMode = ST_OAM_AFFINE_OFF;
         gSprites[gBattlerSpriteIds[gActiveBattler]].hFlip = 1;
@@ -2343,7 +2343,7 @@ static void PlayerHandleDrawTrainerPic(void)
 
         gSprites[gBattlerSpriteIds[gActiveBattler]].oam.paletteNum = gActiveBattler;
         gSprites[gBattlerSpriteIds[gActiveBattler]].x2 = DISPLAY_WIDTH;
-        gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -2;
+        gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -FB_INTRO_SLIDE_SPEED;
         gSprites[gBattlerSpriteIds[gActiveBattler]].callback = SpriteCB_TrainerSlideIn;
     }
 
@@ -2382,7 +2382,7 @@ static void PlayerHandleTrainerSlide(void)
 
     gSprites[gBattlerSpriteIds[gActiveBattler]].oam.paletteNum = gActiveBattler;
     gSprites[gBattlerSpriteIds[gActiveBattler]].x2 = -96;
-    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = 2;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = FB_INTRO_SLIDE_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = SpriteCB_TrainerSlideIn;
 
     gBattlerControllerFuncs[gActiveBattler] = CompleteOnBankSpriteCallbackDummy2;
@@ -2935,7 +2935,7 @@ static void PlayerHandleIntroTrainerBallThrow(void)
 
     SetSpritePrimaryCoordsFromSecondaryCoords(&gSprites[gBattlerSpriteIds[gActiveBattler]]);
 
-    gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50 / FB_SENDOUT_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[2] = -40;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[4] = gSprites[gBattlerSpriteIds[gActiveBattler]].y;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = StartAnimLinearTranslation;
@@ -2977,7 +2977,7 @@ void SpriteCB_FreePlayerSpriteLoadMonSprite(struct Sprite *sprite)
 // Send out at start of battle
 static void Task_StartSendOutAnim(u8 taskId)
 {
-    if (gTasks[taskId].tStartTimer < 31)
+    if (gTasks[taskId].tStartTimer < 31 / FB_SENDOUT_SPEED)
     {
         gTasks[taskId].tStartTimer++;
     }
@@ -3024,7 +3024,7 @@ static void PlayerHandleDrawPartyStatusSummary(void)
 
         // If intro, skip the delay after drawing
         if (gBattleBufferA[gActiveBattler][2] != 0)
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = 93;
+            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = FB_PARTY_SUMMARY_FRAMES + 1;
 
         gBattlerControllerFuncs[gActiveBattler] = EndDrawPartyStatusSummary;
     }
@@ -3032,7 +3032,7 @@ static void PlayerHandleDrawPartyStatusSummary(void)
 
 static void EndDrawPartyStatusSummary(void)
 {
-    if (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer++ > 92)
+    if (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer++ > FB_PARTY_SUMMARY_FRAMES)
     {
         gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = 0;
         PlayerBufferExecCompleted();

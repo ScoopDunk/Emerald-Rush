@@ -827,9 +827,27 @@ static void RemoveUsedItem(void)
     }
 }
 
+#if RUSH_REPEL_PROMPT
+// Same as RemoveUsedItem, but for when the bag isn't open (Repel prompt on the field)
+static void RemoveUsedItemOnField(void)
+{
+    RemoveBagItem(gSpecialVar_ItemId, 1);
+    CopyItemName(gSpecialVar_ItemId, gStringVar2);
+    StringExpandPlaceholders(gStringVar4, gText_PlayerUsedVar2);
+}
+#endif
+
+// Called by EventScript_RepelWoreOffPrompt after the player chooses to use another Repel.
+// gSpecialVar_ItemId already holds the Repel that wore off.
+void UseRepelOnField(void)
+{
+    u8 taskId = CreateTask(ItemUseOutOfBattle_Repel, 80);
+    gTasks[taskId].tUsingRegisteredKeyItem = TRUE;
+}
+
 void ItemUseOutOfBattle_Repel(u8 taskId)
 {
-    if (VarGet(VAR_REPEL_STEP_COUNT) == 0)
+    if (REPEL_STEPS(VarGet(VAR_REPEL_STEP_COUNT)) == 0)
         gTasks[taskId].func = Task_StartUseRepel;
     else if (CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE)
         DisplayItemMessage(taskId, FONT_NORMAL, gText_RepelEffectsLingered, CloseItemMessage);
@@ -853,7 +871,15 @@ static void Task_UseRepel(u8 taskId)
 {
     if (!IsSEPlaying())
     {
-        VarSet(VAR_REPEL_STEP_COUNT, GetItemHoldEffectParam(gSpecialVar_ItemId));
+        VarSet(VAR_REPEL_STEP_COUNT, REPEL_VAR(gSpecialVar_ItemId, GetItemHoldEffectParam(gSpecialVar_ItemId)));
+#if RUSH_REPEL_PROMPT
+        if (gTasks[taskId].tUsingRegisteredKeyItem)
+        {
+            RemoveUsedItemOnField();
+            DisplayItemMessageOnField(taskId, gStringVar4, Task_CloseCantUseKeyItemMessage);
+            return;
+        }
+#endif
         RemoveUsedItem();
         if (CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE)
             DisplayItemMessage(taskId, FONT_NORMAL, gStringVar4, CloseItemMessage);

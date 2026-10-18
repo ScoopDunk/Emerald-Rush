@@ -55,4 +55,6 @@
 #endif
 #endif
 
+#include "rush_config.h"
+
 #endif // GUARD_CONFIG_H

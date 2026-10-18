@@ -910,7 +910,7 @@ static void SpriteCB_BallThrow_CaptureMon(struct Sprite *sprite)
 
 static void SpriteCB_PlayerMonSendOut_1(struct Sprite *sprite)
 {
-    sprite->data[0] = 25;
+    sprite->data[0] = 25 / FB_SENDOUT_SPEED;
     sprite->data[2] = GetBattlerSpriteCoord(sprite->sBattler, BATTLER_COORD_X_2);
     sprite->data[4] = GetBattlerSpriteCoord(sprite->sBattler, BATTLER_COORD_Y_PIC_OFFSET) + 24;
     sprite->data[5] = -30;
@@ -1242,7 +1242,7 @@ void StartHealthboxSlideIn(u8 battler)
 {
     struct Sprite *healthboxSprite = &gSprites[gHealthboxSpriteIds[battler]];
 
-    healthboxSprite->sSpeedX = 5;
+    healthboxSprite->sSpeedX = 5 * FB_HEALTHBOX_SLIDE_SPEED;
     healthboxSprite->sSpeedY = 0;
     healthboxSprite->x2 = 0x73;
     healthboxSprite->y2 = 0;
@@ -1262,7 +1262,7 @@ void StartHealthboxSlideIn(u8 battler)
 static void SpriteCB_HealthboxSlideInDelayed(struct Sprite *sprite)
 {
     sprite->sDelayTimer++;
-    if (sprite->sDelayTimer == 20)
+    if (sprite->sDelayTimer >= 20 / FB_HEALTHBOX_SLIDE_SPEED)
     {
         sprite->sDelayTimer = 0;
         sprite->callback = SpriteCB_HealthboxSlideIn;
@@ -1271,8 +1271,13 @@ static void SpriteCB_HealthboxSlideInDelayed(struct Sprite *sprite)
 
 static void SpriteCB_HealthboxSlideIn(struct Sprite *sprite)
 {
+    s16 oldX = sprite->x2;
+
     sprite->x2 -= sprite->sSpeedX;
     sprite->y2 -= sprite->sSpeedY;
+    // A faster slide can step past 0, so stop exactly on it
+    if ((oldX > 0 && sprite->x2 < 0) || (oldX < 0 && sprite->x2 > 0))
+        sprite->x2 = 0;
     if (sprite->x2 == 0 && sprite->y2 == 0)
         sprite->callback = SpriteCallbackDummy;
 }

@@ -330,8 +330,14 @@ static void InitLocalLinkPlayer(void)
     gLocalLinkPlayer.language = gGameLanguage;
     gLocalLinkPlayer.version = gGameVersion + 0x4000;
     gLocalLinkPlayer.lp_field_2 = 0x8000;
+#if RUSH_TRADE_ANYTIME
+    // Report National Dex + Champion so partners never block trades with us
+    gLocalLinkPlayer.progressFlags = TRUE;
+    if (TRUE)
+#else
     gLocalLinkPlayer.progressFlags = IsNationalPokedexEnabled();
     if (FlagGet(FLAG_IS_CHAMPION))
+#endif
     {
         gLocalLinkPlayer.progressFlags |= 0x10;
     }

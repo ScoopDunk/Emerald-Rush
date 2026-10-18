@@ -1060,9 +1060,36 @@ static void LaunchBattleTransitionTask(u8 transitionId)
     sTransitionData = AllocZeroed(sizeof(*sTransitionData));
 }
 
+#if B_TRANSITION_SPEED > 1
+// Runs the transition's main task extra times per frame to speed it up
+// (see B_TRANSITION_SPEED). Effects that wait on palette fades or sprites
+// still wait for those, so nothing gets out of step; it just skips frames.
+static void RunTransitionExtraSteps(u8 taskId)
+{
+    u32 i;
+    u8 mainTaskId;
+    TaskFunc mainFunc;
+
+    if (gTasks[taskId].tState != ARRAY_COUNT(sTaskHandlers) - 1) // Transition_WaitForMain
+        return;
+
+    mainFunc = sTasks_Main[gTasks[taskId].tTransitionId];
+    mainTaskId = FindTaskIdByFunc(mainFunc);
+    for (i = 1; i < FB_TRANSITION_SPEED && mainTaskId != TASK_NONE; i++)
+    {
+        mainFunc(mainTaskId);
+        if (!gTasks[mainTaskId].isActive || gTasks[mainTaskId].func != mainFunc)
+            break;
+    }
+}
+#endif
+
 static void Task_BattleTransition(u8 taskId)
 {
     while (sTaskHandlers[gTasks[taskId].tState](&gTasks[taskId]));
+#if B_TRANSITION_SPEED > 1
+    RunTransitionExtraSteps(taskId);
+#endif
 }
 
 static bool8 Transition_StartIntro(struct Task *task)
@@ -1118,7 +1145,7 @@ static void Task_Intro(u8 taskId)
     if (gTasks[taskId].tState == 0)
     {
         gTasks[taskId].tState++;
-        CreateIntroTask(0, 0, 3, 2, 2);
+        CreateIntroTask(0, 0, FB_TRANSITION_FLASHES, 2, 2);
     }
     else if (IsIntroTaskDone())
     {

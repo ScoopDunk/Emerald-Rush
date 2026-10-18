@@ -372,16 +372,23 @@ static const u8 sText_PlayerDefeatedLinkTrainerTrainer1[] = _("Player defeated\n
 static const u8 sText_CreptCloser[] = _("{B_PLAYER_NAME} crept closer to\n{B_OPPONENT_MON1_NAME}!");
 static const u8 sText_CantGetCloser[] = _("{B_PLAYER_NAME} can't get any closer!");
 static const u8 sText_PkmnWatchingCarefully[] = _("{B_OPPONENT_MON1_NAME} is watching\ncarefully!");
+// Intro messages: with FAST BATTLES they continue on their own instead of waiting for A
+#define INTRO_MSG(name) ((B_INTRO_MSG_NO_BUTTON && AreFastBattlesOn()) ? name##_Fast : name)
+
 static const u8 sText_PkmnCuriousAboutX[] = _("{B_OPPONENT_MON1_NAME} is curious about\nthe {B_BUFF1}!");
 static const u8 sText_PkmnEnthralledByX[] = _("{B_OPPONENT_MON1_NAME} is enthralled by\nthe {B_BUFF1}!");
 static const u8 sText_PkmnIgnoredX[] = _("{B_OPPONENT_MON1_NAME} completely ignored\nthe {B_BUFF1}!");
 static const u8 sText_ThrewPokeblockAtPkmn[] = _("{B_PLAYER_NAME} threw a {POKEBLOCK}\nat the {B_OPPONENT_MON1_NAME}!");
 static const u8 sText_OutOfSafariBalls[] = _("{PLAY_SE SE_DING_DONG}ANNOUNCER: You're out of\nSAFARI BALLS! Game over!\p");
 static const u8 sText_OpponentMon1Appeared[] = _("{B_OPPONENT_MON1_NAME} appeared!\p");
+static const u8 sText_WildPkmnAppeared_Fast[] = _("Wild {B_OPPONENT_MON1_NAME} appeared!{PAUSE 60}"); // FAST BATTLES: continues by itself
 static const u8 sText_WildPkmnAppeared[] = _("Wild {B_OPPONENT_MON1_NAME} appeared!\p");
+static const u8 sText_LegendaryPkmnAppeared_Fast[] = _("Wild {B_OPPONENT_MON1_NAME} appeared!{PAUSE 60}"); // FAST BATTLES: continues by itself
 static const u8 sText_LegendaryPkmnAppeared[] = _("Wild {B_OPPONENT_MON1_NAME} appeared!\p");
 static const u8 sText_WildPkmnAppearedPause[] = _("Wild {B_OPPONENT_MON1_NAME} appeared!{PAUSE 127}");
+static const u8 sText_TwoWildPkmnAppeared_Fast[] = _("Wild {B_OPPONENT_MON1_NAME} and\n{B_OPPONENT_MON2_NAME} appeared!{PAUSE 60}"); // FAST BATTLES: continues by itself
 static const u8 sText_TwoWildPkmnAppeared[] = _("Wild {B_OPPONENT_MON1_NAME} and\n{B_OPPONENT_MON2_NAME} appeared!\p");
+static const u8 sText_Trainer1WantsToBattle_Fast[] = _("{B_TRAINER1_CLASS} {B_TRAINER1_NAME}\nwould like to battle!{PAUSE 60}"); // FAST BATTLES: continues by itself
 static const u8 sText_Trainer1WantsToBattle[] = _("{B_TRAINER1_CLASS} {B_TRAINER1_NAME}\nwould like to battle!\p");
 static const u8 sText_LinkTrainerWantsToBattle[] = _("{B_LINK_OPPONENT1_NAME}\nwants to battle!");
 static const u8 sText_TwoLinkTrainersWantToBattle[] = _("{B_LINK_OPPONENT1_NAME} and {B_LINK_OPPONENT2_NAME}\nwant to battle!");
@@ -1375,6 +1382,7 @@ const u8 gText_Body[] = _("Body");
 const u8 gText_Judgment[] = _("{B_BUFF1}{CLEAR 13}Judgment{CLEAR 13}{B_BUFF2}");
 static const u8 sText_TwoTrainersSentPkmn[] = _("{B_TRAINER1_CLASS} {B_TRAINER1_NAME} sent\nout {B_OPPONENT_MON1_NAME}!\p{B_TRAINER2_CLASS} {B_TRAINER2_NAME} sent\nout {B_OPPONENT_MON2_NAME}!");
 static const u8 sText_Trainer2SentOutPkmn[] = _("{B_TRAINER2_CLASS} {B_TRAINER2_NAME} sent\nout {B_BUFF1}!");
+static const u8 sText_TwoTrainersWantToBattle_Fast[] = _("{B_TRAINER1_CLASS} {B_TRAINER1_NAME} and\n{B_TRAINER2_CLASS} {B_TRAINER2_NAME}\lwant to battle!{PAUSE 60}"); // FAST BATTLES: continues by itself
 static const u8 sText_TwoTrainersWantToBattle[] = _("{B_TRAINER1_CLASS} {B_TRAINER1_NAME} and\n{B_TRAINER2_CLASS} {B_TRAINER2_NAME}\lwant to battle!\p");
 static const u8 sText_InGamePartnerSentOutZGoN[] = _("{B_PARTNER_CLASS} {B_PARTNER_NAME} sent\nout {B_PLAYER_MON2_NAME}!\lGo, {B_PLAYER_MON1_NAME}!");
 static const u8 sText_TwoInGameTrainersDefeated[] = _("{B_TRAINER1_CLASS} {B_TRAINER1_NAME} and\n{B_TRAINER2_CLASS} {B_TRAINER2_NAME}\lwere defeated!\p");
@@ -1990,7 +1998,7 @@ void BufferStringBattle(u16 stringID)
             {
                 if (gBattleTypeFlags & BATTLE_TYPE_TOWER_LINK_MULTI)
                 {
-                    stringPtr = sText_TwoTrainersWantToBattle;
+                    stringPtr = INTRO_MSG(sText_TwoTrainersWantToBattle);
                 }
                 else if (gBattleTypeFlags & BATTLE_TYPE_MULTI)
                 {
@@ -2002,7 +2010,7 @@ void BufferStringBattle(u16 stringID)
                 else
                 {
                     if (gTrainerBattleOpponent_A == TRAINER_UNION_ROOM)
-                        stringPtr = sText_Trainer1WantsToBattle;
+                        stringPtr = INTRO_MSG(sText_Trainer1WantsToBattle);
                     else if (gBattleTypeFlags & BATTLE_TYPE_RECORDED)
                         stringPtr = sText_LinkTrainerWantsToBattlePause;
                     else
@@ -2012,23 +2020,23 @@ void BufferStringBattle(u16 stringID)
             else
             {
                 if (gBattleTypeFlags & BATTLE_TYPE_INGAME_PARTNER)
-                    stringPtr = sText_TwoTrainersWantToBattle;
+                    stringPtr = INTRO_MSG(sText_TwoTrainersWantToBattle);
                 else if (gBattleTypeFlags & BATTLE_TYPE_TWO_OPPONENTS)
-                    stringPtr = sText_TwoTrainersWantToBattle;
+                    stringPtr = INTRO_MSG(sText_TwoTrainersWantToBattle);
                 else
-                    stringPtr = sText_Trainer1WantsToBattle;
+                    stringPtr = INTRO_MSG(sText_Trainer1WantsToBattle);
             }
         }
         else
         {
             if (gBattleTypeFlags & BATTLE_TYPE_LEGENDARY)
-                stringPtr = sText_LegendaryPkmnAppeared;
+                stringPtr = INTRO_MSG(sText_LegendaryPkmnAppeared);
             else if (gBattleTypeFlags & BATTLE_TYPE_DOUBLE) // interesting, looks like they had something planned for wild double battles
-                stringPtr = sText_TwoWildPkmnAppeared;
+                stringPtr = INTRO_MSG(sText_TwoWildPkmnAppeared);
             else if (gBattleTypeFlags & BATTLE_TYPE_WALLY_TUTORIAL)
                 stringPtr = sText_WildPkmnAppearedPause;
             else
-                stringPtr = sText_WildPkmnAppeared;
+                stringPtr = INTRO_MSG(sText_WildPkmnAppeared);
         }
         break;
     case STRINGID_INTROSENDOUT: // poke first send-out

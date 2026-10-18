@@ -714,7 +714,8 @@ static void Task_MainMenuCheckBattery(u8 taskId)
         SetGpuReg(REG_OFFSET_BLDALPHA, 0);
         SetGpuReg(REG_OFFSET_BLDY, 7);
 
-        if (!(RtcGetErrorStatus() & RTC_ERR_FLAG_MASK))
+        // Fast soft reset skips the dead battery warning (it was already shown on power-on)
+        if (!(RtcGetErrorStatus() & RTC_ERR_FLAG_MASK) || (RUSH_FAST_SOFT_RESET && gFastSoftResetBoot))
         {
             gTasks[taskId].func = Task_DisplayMainMenu;
         }
@@ -940,6 +941,14 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
 
     if (!gPaletteFade.active)
     {
+#if RUSH_FAST_SOFT_RESET && RUSH_RNG_FIX
+        // The title screen (which normally seeds the RNG) was skipped, so seed here
+        if (gFastSoftResetBoot)
+        {
+            SeedRngFromBootTimer();
+            gFastSoftResetBoot = FALSE;
+        }
+#endif
         if (gTasks[taskId].tMenuType == HAS_MYSTERY_EVENTS)
             RemoveScrollIndicatorArrowPair(gTasks[taskId].tScrollArrowTaskId);
         ClearStdWindowAndFrame(0, TRUE);

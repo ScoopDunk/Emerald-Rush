@@ -1,0 +1,30 @@
+#ifndef GUARD_RUSH_SPEED_H
+#define GUARD_RUSH_SPEED_H
+
+// FAST BATTLES option (Options menu). FAST uses the B_* values in
+// include/rush_config.h; NORM uses vanilla Emerald's values, so battles play
+// exactly as if none of the speed-ups were there.
+bool32 AreFastBattlesOn(void);
+
+#define FAST_OR_NORM(fast, norm)    (AreFastBattlesOn() ? (fast) : (norm))
+
+#define FB_TRANSITION_SPEED         FAST_OR_NORM(B_TRANSITION_SPEED, 1)
+#define FB_TRANSITION_FLASHES       FAST_OR_NORM(B_TRANSITION_FLASHES, 3)
+#define FB_INTRO_WINDOW_SPEED       FAST_OR_NORM(B_INTRO_WINDOW_SPEED, 1)
+#define FB_INTRO_SLIDE_SPEED        FAST_OR_NORM(B_INTRO_SLIDE_SPEED, 2)
+#define FB_PARTY_SUMMARY_FRAMES     FAST_OR_NORM(B_PARTY_SUMMARY_FRAMES, 92)
+#define FB_SENDOUT_SPEED            FAST_OR_NORM(B_SENDOUT_SPEED, 1)
+#define FB_BATTLE_SPEED             FAST_OR_NORM(B_BATTLE_SPEED, 1)
+#define FB_MOVE_ANIM_SPEED          FAST_OR_NORM(B_MOVE_ANIM_SPEED, 1)
+#define FB_MON_ANIM_SPEED           FAST_OR_NORM(B_MON_ANIM_SPEED, 1)
+#define FB_BALL_ANIM_SPEED          FAST_OR_NORM(B_BALL_ANIM_SPEED, 1)
+#define FB_MSG_WAIT_SPEED           FAST_OR_NORM(B_MSG_WAIT_SPEED, 1)
+#define FB_PAUSE_SPEED              FAST_OR_NORM(B_PAUSE_SPEED, 1)
+#define FB_HP_BAR_SPEED             FAST_OR_NORM(B_HP_BAR_SPEED, 0)
+#define FB_EXP_BAR_SPEED            FAST_OR_NORM(B_EXP_BAR_SPEED, 1)
+#define FB_HEALTHBOX_SLIDE_SPEED    FAST_OR_NORM(B_HEALTHBOX_SLIDE_SPEED, 1)
+#define FB_HIT_BLINK_FRAMES         FAST_OR_NORM(B_HIT_BLINK_FRAMES, 32)
+#define FB_SCRIPT_COMMANDS_PER_FRAME FAST_OR_NORM(B_SCRIPT_COMMANDS_PER_FRAME, 1)
+#define FB_END_FADE_DELTA           FAST_OR_NORM(B_END_FADE_DELTA, 2)
+
+#endif // GUARD_RUSH_SPEED_H

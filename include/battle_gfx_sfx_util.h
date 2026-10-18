@@ -43,5 +43,6 @@ void ClearTemporarySpeciesSpriteData(u8 battler, bool8 dontClearSubstitute);
 void AllocateMonSpritesGfx(void);
 void FreeMonSpritesGfx(void);
 bool32 ShouldPlayNormalMonCry(struct Pokemon *mon);
+bool8 BattleShouldWaitForCry(void);
 
 #endif // GUARD_BATTLE_GFX_SFX_UTIL_H

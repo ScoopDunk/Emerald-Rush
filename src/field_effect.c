@@ -2590,7 +2590,9 @@ bool8 FldEff_FieldMoveShowMonInit(void)
     gFieldEffectArguments[1] = GetMonData(pokemon, MON_DATA_OT_ID);
     gFieldEffectArguments[2] = GetMonData(pokemon, MON_DATA_PERSONALITY);
     gFieldEffectArguments[0] |= noDucking;
+#if !RUSH_SKIP_FIELD_MOVE_CUTIN
     FieldEffectStart(FLDEFF_FIELD_MOVE_SHOW_MON);
+#endif
     FieldEffectActiveListRemove(FLDEFF_FIELD_MOVE_SHOW_MON_INIT);
     return FALSE;
 }

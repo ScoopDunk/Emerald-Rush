@@ -363,7 +363,7 @@ static void DoHitAnimBlinkSpriteEffect(void)
 {
     u8 spriteId = gBattlerSpriteIds[gActiveBattler];
 
-    if (gSprites[spriteId].data[1] == 32)
+    if (gSprites[spriteId].data[1] >= FB_HIT_BLINK_FRAMES)
     {
         gSprites[spriteId].data[1] = 0;
         gSprites[spriteId].invisible = FALSE;
@@ -1042,7 +1042,7 @@ static void WallyHandleDrawTrainerPic(void)
                                                30);
     gSprites[gBattlerSpriteIds[gActiveBattler]].oam.paletteNum = gActiveBattler;
     gSprites[gBattlerSpriteIds[gActiveBattler]].x2 = DISPLAY_WIDTH;
-    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -2;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -FB_INTRO_SLIDE_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = SpriteCB_TrainerSlideIn;
     gBattlerControllerFuncs[gActiveBattler] = CompleteOnBattlerSpriteCallbackDummy;
 }
@@ -1057,7 +1057,7 @@ static void WallyHandleTrainerSlide(void)
                                                30);
     gSprites[gBattlerSpriteIds[gActiveBattler]].oam.paletteNum = gActiveBattler;
     gSprites[gBattlerSpriteIds[gActiveBattler]].x2 = -96;
-    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = 2;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = FB_INTRO_SLIDE_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = SpriteCB_TrainerSlideIn;
     gBattlerControllerFuncs[gActiveBattler] = CompleteOnBankSpriteCallbackDummy2;
 }
@@ -1435,7 +1435,7 @@ static void WallyHandleIntroTrainerBallThrow(void)
 
     SetSpritePrimaryCoordsFromSecondaryCoords(&gSprites[gBattlerSpriteIds[gActiveBattler]]);
 
-    gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50 / FB_SENDOUT_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[2] = -40;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[4] = gSprites[gBattlerSpriteIds[gActiveBattler]].y;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = StartAnimLinearTranslation;
@@ -1487,7 +1487,7 @@ static void StartSendOutAnim(u8 battler)
 
 static void Task_StartSendOutAnim(u8 taskId)
 {
-    if (gTasks[taskId].data[1] < 31)
+    if (gTasks[taskId].data[1] < 31 / FB_SENDOUT_SPEED)
     {
         gTasks[taskId].data[1]++;
     }

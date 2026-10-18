@@ -1342,3 +1342,14 @@ bool32 ShouldPlayNormalMonCry(struct Pokemon *mon)
 
     return TRUE;
 }
+
+// Whether a battle controller should keep waiting for a Pokémon's cry to end
+// before moving on. With B_SKIP_CRY_WAIT the cry keeps playing in the background.
+bool8 BattleShouldWaitForCry(void)
+{
+#if B_SKIP_CRY_WAIT
+    if (AreFastBattlesOn() && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED)))
+        return FALSE;
+#endif
+    return IsCryPlayingOrClearCrySongs();
+}

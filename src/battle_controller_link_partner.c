@@ -320,7 +320,7 @@ static void DoHitAnimBlinkSpriteEffect(void)
 {
     u8 spriteId = gBattlerSpriteIds[gActiveBattler];
 
-    if (gSprites[spriteId].data[1] == 32)
+    if (gSprites[spriteId].data[1] >= FB_HIT_BLINK_FRAMES)
     {
         gSprites[spriteId].data[1] = 0;
         gSprites[spriteId].invisible = FALSE;
@@ -1144,7 +1144,7 @@ static void LinkPartnerHandleDrawTrainerPic(void)
 
     gSprites[gBattlerSpriteIds[gActiveBattler]].oam.paletteNum = gActiveBattler;
     gSprites[gBattlerSpriteIds[gActiveBattler]].x2 = DISPLAY_WIDTH;
-    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -2;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].sSpeedX = -FB_INTRO_SLIDE_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = SpriteCB_TrainerSlideIn;
 
     gBattlerControllerFuncs[gActiveBattler] = CompleteOnBattlerSpriteCallbackDummy;
@@ -1532,7 +1532,7 @@ static void LinkPartnerHandleIntroTrainerBallThrow(void)
 
     SetSpritePrimaryCoordsFromSecondaryCoords(&gSprites[gBattlerSpriteIds[gActiveBattler]]);
 
-    gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50;
+    gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50 / FB_SENDOUT_SPEED;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[2] = -40;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[4] = gSprites[gBattlerSpriteIds[gActiveBattler]].y;
     gSprites[gBattlerSpriteIds[gActiveBattler]].callback = StartAnimLinearTranslation;
@@ -1574,7 +1574,7 @@ static void LinkPartnerHandleIntroTrainerBallThrow(void)
 
 static void Task_StartSendOutAnim(u8 taskId)
 {
-    if (gTasks[taskId].data[1] < 24)
+    if (gTasks[taskId].data[1] < 24 / FB_SENDOUT_SPEED)
     {
         gTasks[taskId].data[1]++;
     }
@@ -1617,7 +1617,7 @@ static void LinkPartnerHandleDrawPartyStatusSummary(void)
         gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = 0;
 
         if (gBattleBufferA[gActiveBattler][2] != 0)
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = 93;
+            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = FB_PARTY_SUMMARY_FRAMES + 1;
 
         gBattlerControllerFuncs[gActiveBattler] = EndDrawPartyStatusSummary;
     }
@@ -1625,7 +1625,7 @@ static void LinkPartnerHandleDrawPartyStatusSummary(void)
 
 static void EndDrawPartyStatusSummary(void)
 {
-    if (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer++ > 92)
+    if (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer++ > FB_PARTY_SUMMARY_FRAMES)
     {
         gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].partyStatusDelayTimer = 0;
         LinkPartnerBufferExecCompleted();

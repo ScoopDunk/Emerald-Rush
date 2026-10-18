@@ -23,14 +23,22 @@
 #define tSound data[4]
 #define tButtonMode data[5]
 #define tWindowFrameType data[6]
+#define tFastBattles data[7]
+#define tNavCalls data[8]
 
 enum
 {
     MENUITEM_TEXTSPEED,
     MENUITEM_BATTLESCENE,
+#if RUSH_FAST_BATTLES_OPTION
+    MENUITEM_FASTBATTLES,
+#endif
     MENUITEM_BATTLESTYLE,
     MENUITEM_SOUND,
     MENUITEM_BUTTONMODE,
+#if RUSH_NAV_CALLS_OPTION
+    MENUITEM_NAVCALLS,
+#endif
     MENUITEM_FRAMETYPE,
     MENUITEM_CANCEL,
     MENUITEM_COUNT,
@@ -42,12 +50,37 @@ enum
     WIN_OPTIONS
 };
 
-#define YPOS_TEXTSPEED    (MENUITEM_TEXTSPEED * 16)
-#define YPOS_BATTLESCENE  (MENUITEM_BATTLESCENE * 16)
-#define YPOS_BATTLESTYLE  (MENUITEM_BATTLESTYLE * 16)
-#define YPOS_SOUND        (MENUITEM_SOUND * 16)
-#define YPOS_BUTTONMODE   (MENUITEM_BUTTONMODE * 16)
-#define YPOS_FRAMETYPE    (MENUITEM_FRAMETYPE * 16)
+// Emerald Rush: with 9 rows the list takes the whole screen (no "OPTION" title box)
+// at the normal 16px spacing. With 8 rows it keeps the title and uses 14px rows.
+#if RUSH_NAV_CALLS_OPTION
+#define OPTION_MENU_FULLSCREEN TRUE
+#define OPTION_ROW_HEIGHT 16
+#define OPTION_LIST_TOP_PX 8
+#define YPOS_NAVCALLS (MENUITEM_NAVCALLS * OPTION_ROW_HEIGHT)
+#elif RUSH_FAST_BATTLES_OPTION
+#define OPTION_MENU_FULLSCREEN FALSE
+#define OPTION_ROW_HEIGHT 14
+#define OPTION_LIST_TOP_PX 40
+#else
+#define OPTION_MENU_FULLSCREEN FALSE
+#define OPTION_ROW_HEIGHT 16
+#define OPTION_LIST_TOP_PX 40
+#endif
+#if RUSH_FAST_BATTLES_OPTION
+#define YPOS_FASTBATTLES (MENUITEM_FASTBATTLES * OPTION_ROW_HEIGHT)
+#endif
+// Frame border tiles: moved past the bigger list window when it's fullscreen
+#if OPTION_MENU_FULLSCREEN
+#define OPTION_FRAME_TILES 0x1E0
+#else
+#define OPTION_FRAME_TILES 0x1A2
+#endif
+#define YPOS_TEXTSPEED (MENUITEM_TEXTSPEED * OPTION_ROW_HEIGHT)
+#define YPOS_BATTLESCENE (MENUITEM_BATTLESCENE * OPTION_ROW_HEIGHT)
+#define YPOS_BATTLESTYLE (MENUITEM_BATTLESTYLE * OPTION_ROW_HEIGHT)
+#define YPOS_SOUND (MENUITEM_SOUND * OPTION_ROW_HEIGHT)
+#define YPOS_BUTTONMODE (MENUITEM_BUTTONMODE * OPTION_ROW_HEIGHT)
+#define YPOS_FRAMETYPE (MENUITEM_FRAMETYPE * OPTION_ROW_HEIGHT)
 
 static void Task_OptionMenuFadeIn(u8 taskId);
 static void Task_OptionMenuProcessInput(u8 taskId);
@@ -66,6 +99,9 @@ static u8 FrameType_ProcessInput(u8 selection);
 static void FrameType_DrawChoices(u8 selection);
 static u8 ButtonMode_ProcessInput(u8 selection);
 static void ButtonMode_DrawChoices(u8 selection);
+static u8 FastBattles_ProcessInput(u8 selection);
+static void NavCalls_DrawChoices(u8 selection);
+static void FastBattles_DrawChoices(u8 selection);
 static void DrawHeaderText(void);
 static void DrawOptionMenuTexts(void);
 static void DrawBgWindowFrames(void);
@@ -78,11 +114,21 @@ static const u8 sEqualSignGfx[] = INCGFX_U8("graphics/interface/option_menu_equa
 
 static const u8 *const sOptionMenuItemsNames[MENUITEM_COUNT] =
 {
+#if RUSH_MON_ANIM_OPTION
+    [MENUITEM_TEXTSPEED]   = gText_MonAnims,
+#else
     [MENUITEM_TEXTSPEED]   = gText_TextSpeed,
+#endif
     [MENUITEM_BATTLESCENE] = gText_BattleScene,
+#if RUSH_FAST_BATTLES_OPTION
+    [MENUITEM_FASTBATTLES] = gText_FastBattles,
+#endif
     [MENUITEM_BATTLESTYLE] = gText_BattleStyle,
     [MENUITEM_SOUND]       = gText_Sound,
     [MENUITEM_BUTTONMODE]  = gText_ButtonMode,
+#if RUSH_NAV_CALLS_OPTION
+    [MENUITEM_NAVCALLS]    = gText_NavCalls,
+#endif
     [MENUITEM_FRAMETYPE]   = gText_Frame,
     [MENUITEM_CANCEL]      = gText_OptionMenuCancel,
 };
@@ -98,6 +144,17 @@ static const struct WindowTemplate sOptionMenuWinTemplates[] =
         .paletteNum = 1,
         .baseBlock = 2
     },
+#if OPTION_MENU_FULLSCREEN
+    [WIN_OPTIONS] = {
+        .bg = 0,
+        .tilemapLeft = 2,
+        .tilemapTop = 1,
+        .width = 26,
+        .height = 18,
+        .paletteNum = 1,
+        .baseBlock = 2 // the unused title window's tiles; ends at 0x1D6, before the frame tiles at 0x1E0
+    },
+#else
     [WIN_OPTIONS] = {
         .bg = 0,
         .tilemapLeft = 2,
@@ -107,6 +164,7 @@ static const struct WindowTemplate sOptionMenuWinTemplates[] =
         .paletteNum = 1,
         .baseBlock = 0x36
     },
+#endif
     DUMMY_WIN_TEMPLATE
 };
 
@@ -195,7 +253,7 @@ void CB2_InitOptionMenu(void)
         gMain.state++;
         break;
     case 3:
-        LoadBgTiles(1, GetWindowFrameTilesPal(gSaveBlock2Ptr->optionsWindowFrameType)->tiles, 0x120, 0x1A2);
+        LoadBgTiles(1, GetWindowFrameTilesPal(gSaveBlock2Ptr->optionsWindowFrameType)->tiles, 0x120, OPTION_FRAME_TILES);
         gMain.state++;
         break;
     case 4:
@@ -208,8 +266,10 @@ void CB2_InitOptionMenu(void)
         gMain.state++;
         break;
     case 6:
+#if !OPTION_MENU_FULLSCREEN
         PutWindowTilemap(WIN_HEADER);
         DrawHeaderText();
+#endif
         gMain.state++;
         break;
     case 7:
@@ -228,12 +288,22 @@ void CB2_InitOptionMenu(void)
         u8 taskId = CreateTask(Task_OptionMenuFadeIn, 0);
 
         gTasks[taskId].tMenuSelection = 0;
+#if RUSH_MON_ANIM_OPTION
+        gTasks[taskId].tTextSpeed = gSaveBlock2Ptr->optionsMonAnims ? 0 : 1; // 0 = ON, 1 = OFF, like Battle Scene
+#else
         gTasks[taskId].tTextSpeed = gSaveBlock2Ptr->optionsTextSpeed;
+#endif
         gTasks[taskId].tBattleSceneOff = gSaveBlock2Ptr->optionsBattleSceneOff;
         gTasks[taskId].tBattleStyle = gSaveBlock2Ptr->optionsBattleStyle;
         gTasks[taskId].tSound = gSaveBlock2Ptr->optionsSound;
         gTasks[taskId].tButtonMode = gSaveBlock2Ptr->optionsButtonMode;
         gTasks[taskId].tWindowFrameType = gSaveBlock2Ptr->optionsWindowFrameType;
+#if RUSH_FAST_BATTLES_OPTION
+        gTasks[taskId].tFastBattles = gSaveBlock2Ptr->optionsNormalBattles ? 0 : 1; // 0 = NORM, 1 = FAST
+#endif
+#if RUSH_NAV_CALLS_OPTION
+        gTasks[taskId].tNavCalls = gSaveBlock2Ptr->optionsNavCalls ? 0 : 1; // 0 = ON, 1 = OFF, like Battle Scene
+#endif
 
         TextSpeed_DrawChoices(gTasks[taskId].tTextSpeed);
         BattleScene_DrawChoices(gTasks[taskId].tBattleSceneOff);
@@ -241,6 +311,12 @@ void CB2_InitOptionMenu(void)
         Sound_DrawChoices(gTasks[taskId].tSound);
         ButtonMode_DrawChoices(gTasks[taskId].tButtonMode);
         FrameType_DrawChoices(gTasks[taskId].tWindowFrameType);
+#if RUSH_FAST_BATTLES_OPTION
+        FastBattles_DrawChoices(gTasks[taskId].tFastBattles);
+#endif
+#if RUSH_NAV_CALLS_OPTION
+        NavCalls_DrawChoices(gTasks[taskId].tNavCalls);
+#endif
         HighlightOptionMenuItem(gTasks[taskId].tMenuSelection);
 
         CopyWindowToVram(WIN_OPTIONS, COPYWIN_FULL);
@@ -308,6 +384,15 @@ static void Task_OptionMenuProcessInput(u8 taskId)
             if (previousOption != gTasks[taskId].tBattleSceneOff)
                 BattleScene_DrawChoices(gTasks[taskId].tBattleSceneOff);
             break;
+#if RUSH_FAST_BATTLES_OPTION
+        case MENUITEM_FASTBATTLES:
+            previousOption = gTasks[taskId].tFastBattles;
+            gTasks[taskId].tFastBattles = FastBattles_ProcessInput(gTasks[taskId].tFastBattles);
+
+            if (previousOption != gTasks[taskId].tFastBattles)
+                FastBattles_DrawChoices(gTasks[taskId].tFastBattles);
+            break;
+#endif
         case MENUITEM_BATTLESTYLE:
             previousOption = gTasks[taskId].tBattleStyle;
             gTasks[taskId].tBattleStyle = BattleStyle_ProcessInput(gTasks[taskId].tBattleStyle);
@@ -329,6 +414,15 @@ static void Task_OptionMenuProcessInput(u8 taskId)
             if (previousOption != gTasks[taskId].tButtonMode)
                 ButtonMode_DrawChoices(gTasks[taskId].tButtonMode);
             break;
+#if RUSH_NAV_CALLS_OPTION
+        case MENUITEM_NAVCALLS:
+            previousOption = gTasks[taskId].tNavCalls;
+            gTasks[taskId].tNavCalls = FastBattles_ProcessInput(gTasks[taskId].tNavCalls); // same 2-way toggle
+
+            if (previousOption != gTasks[taskId].tNavCalls)
+                NavCalls_DrawChoices(gTasks[taskId].tNavCalls);
+            break;
+#endif
         case MENUITEM_FRAMETYPE:
             previousOption = gTasks[taskId].tWindowFrameType;
             gTasks[taskId].tWindowFrameType = FrameType_ProcessInput(gTasks[taskId].tWindowFrameType);
@@ -350,12 +444,22 @@ static void Task_OptionMenuProcessInput(u8 taskId)
 
 static void Task_OptionMenuSave(u8 taskId)
 {
+#if RUSH_MON_ANIM_OPTION
+    gSaveBlock2Ptr->optionsMonAnims = (gTasks[taskId].tTextSpeed == 0);
+#else
     gSaveBlock2Ptr->optionsTextSpeed = gTasks[taskId].tTextSpeed;
+#endif
     gSaveBlock2Ptr->optionsBattleSceneOff = gTasks[taskId].tBattleSceneOff;
     gSaveBlock2Ptr->optionsBattleStyle = gTasks[taskId].tBattleStyle;
     gSaveBlock2Ptr->optionsSound = gTasks[taskId].tSound;
     gSaveBlock2Ptr->optionsButtonMode = gTasks[taskId].tButtonMode;
     gSaveBlock2Ptr->optionsWindowFrameType = gTasks[taskId].tWindowFrameType;
+#if RUSH_FAST_BATTLES_OPTION
+    gSaveBlock2Ptr->optionsNormalBattles = (gTasks[taskId].tFastBattles == 0);
+#endif
+#if RUSH_NAV_CALLS_OPTION
+    gSaveBlock2Ptr->optionsNavCalls = (gTasks[taskId].tNavCalls == 0);
+#endif
 
     BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
     gTasks[taskId].func = Task_OptionMenuFadeOut;
@@ -374,7 +478,7 @@ static void Task_OptionMenuFadeOut(u8 taskId)
 static void HighlightOptionMenuItem(u8 index)
 {
     SetGpuReg(REG_OFFSET_WIN0H, WIN_RANGE(16, DISPLAY_WIDTH - 16));
-    SetGpuReg(REG_OFFSET_WIN0V, WIN_RANGE(index * 16 + 40, index * 16 + 56));
+    SetGpuReg(REG_OFFSET_WIN0V, WIN_RANGE(index * OPTION_ROW_HEIGHT + OPTION_LIST_TOP_PX, index * OPTION_ROW_HEIGHT + OPTION_LIST_TOP_PX + OPTION_ROW_HEIGHT));
 }
 
 static void DrawOptionMenuChoice(const u8 *text, u8 x, u8 y, u8 style)
@@ -397,6 +501,15 @@ static void DrawOptionMenuChoice(const u8 *text, u8 x, u8 y, u8 style)
 
 static u8 TextSpeed_ProcessInput(u8 selection)
 {
+#if RUSH_MON_ANIM_OPTION
+    // POKeMON ANIM row: ON / OFF toggle
+    if (JOY_NEW(DPAD_LEFT | DPAD_RIGHT))
+    {
+        selection ^= 1;
+        sArrowPressed = TRUE;
+    }
+    return selection;
+#else
     if (JOY_NEW(DPAD_RIGHT))
     {
         if (selection <= 1)
@@ -416,10 +529,19 @@ static u8 TextSpeed_ProcessInput(u8 selection)
         sArrowPressed = TRUE;
     }
     return selection;
+#endif
 }
 
 static void TextSpeed_DrawChoices(u8 selection)
 {
+#if RUSH_MON_ANIM_OPTION
+    u8 animStyles[2] = {0, 0};
+
+    animStyles[selection & 1] = 1;
+    DrawOptionMenuChoice(gText_BattleSceneOn, 104, YPOS_TEXTSPEED, animStyles[0]);
+    DrawOptionMenuChoice(gText_BattleSceneOff, GetStringRightAlignXOffset(FONT_NORMAL, gText_BattleSceneOff, 198), YPOS_TEXTSPEED, animStyles[1]);
+    return;
+#else
     u8 styles[3];
     s32 widthSlow, widthMid, widthFast, xMid;
 
@@ -439,6 +561,7 @@ static void TextSpeed_DrawChoices(u8 selection)
     DrawOptionMenuChoice(gText_TextSpeedMid, xMid, YPOS_TEXTSPEED, styles[1]);
 
     DrawOptionMenuChoice(gText_TextSpeedFast, GetStringRightAlignXOffset(FONT_NORMAL, gText_TextSpeedFast, 198), YPOS_TEXTSPEED, styles[2]);
+#endif
 }
 
 static u8 BattleScene_ProcessInput(u8 selection)
@@ -463,6 +586,45 @@ static void BattleScene_DrawChoices(u8 selection)
     DrawOptionMenuChoice(gText_BattleSceneOn, 104, YPOS_BATTLESCENE, styles[0]);
     DrawOptionMenuChoice(gText_BattleSceneOff, GetStringRightAlignXOffset(FONT_NORMAL, gText_BattleSceneOff, 198), YPOS_BATTLESCENE, styles[1]);
 }
+
+#if RUSH_FAST_BATTLES_OPTION
+static u8 FastBattles_ProcessInput(u8 selection)
+{
+    if (JOY_NEW(DPAD_LEFT | DPAD_RIGHT))
+    {
+        selection ^= 1;
+        sArrowPressed = TRUE;
+    }
+
+    return selection;
+}
+
+static void FastBattles_DrawChoices(u8 selection)
+{
+    u8 styles[2];
+
+    styles[0] = 0;
+    styles[1] = 0;
+    styles[selection] = 1;
+
+    DrawOptionMenuChoice(gText_FastBattlesNorm, 104, YPOS_FASTBATTLES, styles[0]);
+    DrawOptionMenuChoice(gText_FastBattlesFast, GetStringRightAlignXOffset(FONT_NORMAL, gText_FastBattlesFast, 198), YPOS_FASTBATTLES, styles[1]);
+}
+#endif
+
+#if RUSH_NAV_CALLS_OPTION
+static void NavCalls_DrawChoices(u8 selection)
+{
+    u8 styles[2];
+
+    styles[0] = 0;
+    styles[1] = 0;
+    styles[selection] = 1;
+
+    DrawOptionMenuChoice(gText_BattleSceneOn, 104, YPOS_NAVCALLS, styles[0]);
+    DrawOptionMenuChoice(gText_BattleSceneOff, GetStringRightAlignXOffset(FONT_NORMAL, gText_BattleSceneOff, 198), YPOS_NAVCALLS, styles[1]);
+}
+#endif
 
 static u8 BattleStyle_ProcessInput(u8 selection)
 {
@@ -520,7 +682,7 @@ static u8 FrameType_ProcessInput(u8 selection)
         else
             selection = 0;
 
-        LoadBgTiles(1, GetWindowFrameTilesPal(selection)->tiles, 0x120, 0x1A2);
+        LoadBgTiles(1, GetWindowFrameTilesPal(selection)->tiles, 0x120, OPTION_FRAME_TILES);
         LoadPalette(GetWindowFrameTilesPal(selection)->pal, BG_PLTT_ID(7), PLTT_SIZE_4BPP);
         sArrowPressed = TRUE;
     }
@@ -531,7 +693,7 @@ static u8 FrameType_ProcessInput(u8 selection)
         else
             selection = WINDOW_FRAMES_COUNT - 1;
 
-        LoadBgTiles(1, GetWindowFrameTilesPal(selection)->tiles, 0x120, 0x1A2);
+        LoadBgTiles(1, GetWindowFrameTilesPal(selection)->tiles, 0x120, OPTION_FRAME_TILES);
         LoadPalette(GetWindowFrameTilesPal(selection)->pal, BG_PLTT_ID(7), PLTT_SIZE_4BPP);
         sArrowPressed = TRUE;
     }
@@ -628,21 +790,34 @@ static void DrawOptionMenuTexts(void)
 
     FillWindowPixelBuffer(WIN_OPTIONS, PIXEL_FILL(1));
     for (i = 0; i < MENUITEM_COUNT; i++)
-        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, sOptionMenuItemsNames[i], 8, (i * 16) + 1, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, sOptionMenuItemsNames[i], 8, (i * OPTION_ROW_HEIGHT) + 1, TEXT_SKIP_DRAW, NULL);
     CopyWindowToVram(WIN_OPTIONS, COPYWIN_FULL);
 }
 
-#define TILE_TOP_CORNER_L 0x1A2
-#define TILE_TOP_EDGE     0x1A3
-#define TILE_TOP_CORNER_R 0x1A4
-#define TILE_LEFT_EDGE    0x1A5
-#define TILE_RIGHT_EDGE   0x1A7
-#define TILE_BOT_CORNER_L 0x1A8
-#define TILE_BOT_EDGE     0x1A9
-#define TILE_BOT_CORNER_R 0x1AA
+#define TILE_TOP_CORNER_L (OPTION_FRAME_TILES + 0)
+#define TILE_TOP_EDGE (OPTION_FRAME_TILES + 1)
+#define TILE_TOP_CORNER_R (OPTION_FRAME_TILES + 2)
+#define TILE_LEFT_EDGE (OPTION_FRAME_TILES + 3)
+#define TILE_RIGHT_EDGE (OPTION_FRAME_TILES + 5)
+#define TILE_BOT_CORNER_L (OPTION_FRAME_TILES + 6)
+#define TILE_BOT_EDGE (OPTION_FRAME_TILES + 7)
+#define TILE_BOT_CORNER_R (OPTION_FRAME_TILES + 8)
 
 static void DrawBgWindowFrames(void)
 {
+#if OPTION_MENU_FULLSCREEN
+    // Emerald Rush: one frame around the full-height options list (no title box)
+    FillBgTilemapBufferRect(1, TILE_TOP_CORNER_L,  1,  0,  1,  1,  7);
+    FillBgTilemapBufferRect(1, TILE_TOP_EDGE,      2,  0, 26,  1,  7);
+    FillBgTilemapBufferRect(1, TILE_TOP_CORNER_R, 28,  0,  1,  1,  7);
+    FillBgTilemapBufferRect(1, TILE_LEFT_EDGE,     1,  1,  1, 18,  7);
+    FillBgTilemapBufferRect(1, TILE_RIGHT_EDGE,   28,  1,  1, 18,  7);
+    FillBgTilemapBufferRect(1, TILE_BOT_CORNER_L,  1, 19,  1,  1,  7);
+    FillBgTilemapBufferRect(1, TILE_BOT_EDGE,      2, 19, 26,  1,  7);
+    FillBgTilemapBufferRect(1, TILE_BOT_CORNER_R, 28, 19,  1,  1,  7);
+
+    CopyBgTilemapBufferToVram(1);
+#else
     //                     bg, tile,              x, y, width, height, palNum
     // Draw title window frame
     FillBgTilemapBufferRect(1, TILE_TOP_CORNER_L,  1,  0,  1,  1,  7);
@@ -665,4 +840,5 @@ static void DrawBgWindowFrames(void)
     FillBgTilemapBufferRect(1, TILE_BOT_CORNER_R, 28, 19,  1,  1,  7);
 
     CopyBgTilemapBufferToVram(1);
+#endif
 }

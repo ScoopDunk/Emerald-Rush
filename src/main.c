@@ -71,6 +71,12 @@ COMMON_DATA s8 gPcmDmaCounter = 0;
 
 static EWRAM_DATA u16 sTrainerId = 0;
 
+// Emerald Rush fast soft reset: SoftReset (libagbsyscall) writes this magic
+// value after the BIOS has cleared RAM, so the next boot knows it came from a
+// soft reset and skips straight to the main menu (RUSH_FAST_SOFT_RESET).
+EWRAM_DATA u32 gFastSoftResetMagic = 0;
+EWRAM_DATA bool8 gFastSoftResetBoot = FALSE;
+
 //EWRAM_DATA void (**gFlashTimerIntrFunc)(void) = NULL;
 
 static void UpdateLinkAndCallCallbacks(void);
@@ -88,11 +94,18 @@ void EnableVCountIntrAtLine150(void);
 
 void AgbMain(void)
 {
+    // Read before RAM gets cleared; the stack lives in the part of IWRAM the reset keeps
+    u32 resetMagic = gFastSoftResetMagic;
+
     // Modern compilers are liberal with the stack on entry to this function,
     // so RegisterRamReset may crash if it resets IWRAM.
 #if !MODERN
     RegisterRamReset(RESET_ALL);
 #endif //MODERN
+    gFastSoftResetMagic = 0;
+#if RUSH_FAST_SOFT_RESET
+    gFastSoftResetBoot = (resetMagic == FAST_SOFT_RESET_MAGIC);
+#endif
     *(vu16 *)BG_PLTT = RGB_WHITE; // Set the backdrop to white on startup
     InitGpuRegManager();
     REG_WAITCNT = WAITCNT_PREFETCH_ENABLE | WAITCNT_WS0_S_1 | WAITCNT_WS0_N_3;
@@ -114,6 +127,9 @@ void AgbMain(void)
     InitHeap(gHeap, HEAP_SIZE);
 
     gSoftResetDisabled = FALSE;
+#if RUSH_RNG_FIX
+    StartTimer1(); // Runs until the title screen, where it seeds the RNG
+#endif
 
     if (gFlashMemoryPresent != TRUE)
         SetMainCallback2(NULL);
@@ -180,6 +196,11 @@ static void InitMainCallbacks(void)
     gTrainerHillVBlankCounter = NULL;
     gMain.vblankCounter2 = 0;
     gMain.callback1 = NULL;
+#if RUSH_FAST_SOFT_RESET
+    if (gFastSoftResetBoot)
+        SetMainCallback2(CB2_InitMainMenuAfterSoftReset);
+    else
+#endif
     SetMainCallback2(CB2_InitCopyrightScreenAfterBootup);
     gSaveBlock2Ptr = &gSaveblock2.block;
     gPokemonStoragePtr = &gPokemonStorage.block;
@@ -212,6 +233,21 @@ void SeedRngAndSetTrainerId(void)
     REG_TM1CNT_H = 0;
     sTrainerId = val;
 }
+
+#if RUSH_RNG_FIX
+// Called when leaving the title screen. Timer 1 has been counting since boot,
+// so how long the player took to press Start (mixed with the RTC) picks the seed.
+void SeedRngFromBootTimer(void)
+{
+    u32 minutes = RtcGetMinuteCount();
+    u32 seed;
+
+    REG_TM1CNT_H = 0;
+    seed = REG_TM1CNT_L | ((minutes ^ (minutes >> 16)) << 16);
+    gRngValue = seed;
+    sTrainerId = seed;
+}
+#endif
 
 u16 GetGeneratedTrainerIdLower(void)
 {

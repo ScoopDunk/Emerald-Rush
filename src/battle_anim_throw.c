@@ -770,7 +770,7 @@ void AnimTask_ThrowBall(u8 taskId)
 
     ballId = ItemIdToBallId(gLastUsedItem);
     spriteId = CreateSprite(&gBallSpriteTemplates[ballId], 32, 80, 29);
-    gSprites[spriteId].sDuration = 34;
+    gSprites[spriteId].sDuration = 34 / FB_BALL_ANIM_SPEED;
     gSprites[spriteId].sTargetX = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_X);
     gSprites[spriteId].sTargetY = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_Y) - 16;
     gSprites[spriteId].callback = SpriteCB_Ball_Throw;
@@ -808,7 +808,7 @@ void AnimTask_ThrowBall_StandingTrainer(u8 taskId)
     ballId = ItemIdToBallId(gLastUsedItem);
     subpriority = GetBattlerSpriteSubpriority(GetBattlerAtPosition(B_POSITION_OPPONENT_LEFT)) + 1;
     spriteId = CreateSprite(&gBallSpriteTemplates[ballId], x + 32, y | 80, subpriority);
-    gSprites[spriteId].sDuration = 34;
+    gSprites[spriteId].sDuration = 34 / FB_BALL_ANIM_SPEED;
     gSprites[spriteId].sTargetX = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_X);
     gSprites[spriteId].sTargetY = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_Y) - 16;
     gSprites[spriteId].callback = SpriteCallbackDummy;
@@ -916,7 +916,7 @@ static void SpriteCB_Ball_Arc(struct Sprite *sprite)
 
 static void SpriteCB_Ball_MonShrink(struct Sprite *sprite)
 {
-    if (++sprite->sTimer == 10)
+    if (++sprite->sTimer >= 10 / FB_BALL_ANIM_SPEED)
     {
         sprite->sTaskId = CreateTask(TaskDummy, 50);
         sprite->callback = SpriteCB_Ball_MonShrink_Step;
@@ -1109,7 +1109,7 @@ static void SpriteCB_Ball_Bounce_Step(struct Sprite *sprite)
 
 static void SpriteCB_Ball_Wobble(struct Sprite *sprite)
 {
-    if (++sprite->sTimer == 31)
+    if (++sprite->sTimer >= 31 / FB_BALL_ANIM_SPEED)
     {
         sprite->sState = 0;
         sprite->affineAnimPaused = TRUE;
@@ -1261,7 +1261,7 @@ static void SpriteCB_Ball_Wobble_Step(struct Sprite *sprite)
         break;
     case BALL_WAIT_NEXT_SHAKE:
     default:
-        if (++sprite->sTimer == 31)
+        if (++sprite->sTimer >= 31 / FB_BALL_ANIM_SPEED)
         {
             sprite->sTimer = 0;
             RESET_STATE(sprite->sState);
@@ -1288,7 +1288,7 @@ static void SpriteCB_Ball_Wobble_Step(struct Sprite *sprite)
 
 static void SpriteCB_Ball_Release(struct Sprite *sprite)
 {
-    if (++sprite->sTimer == 31)
+    if (++sprite->sTimer >= 31 / FB_BALL_ANIM_SPEED)
     {
         sprite->data[5] = 0;
         sprite->callback = SpriteCB_Ball_Release_Step;
@@ -2030,6 +2030,12 @@ static void DestroyBallOpenAnimationParticle(struct Sprite *sprite)
 #define tPaletteHi data[11]
 #define tBallId    data[15]
 
+// Faster ball-open color fade on the Pokemon when the battle fast-forward is on,
+// so it finishes before the move menu shows up.
+#define FADE_MON_FAST  (FB_BATTLE_SPEED > 1 && gMain.inBattle && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED)))
+#define FADE_MON_STEP  (FADE_MON_FAST ? 2 : 1)
+#define FADE_MON_DELAY (FADE_MON_FAST ? -2 : 0)
+
 u8 LaunchBallFadeMonTask(bool8 unfadeLater, u8 spritePalNum, u32 selectedPalettes, u8 ballId)
 {
     u8 taskId;
@@ -2043,17 +2049,17 @@ u8 LaunchBallFadeMonTask(bool8 unfadeLater, u8 spritePalNum, u32 selectedPalette
     if (!unfadeLater)
     {
         BlendPalette(OBJ_PLTT_ID(spritePalNum), 16, 0, gBallOpenFadeColors[ballId]);
-        gTasks[taskId].tdCoeff = 1;
+        gTasks[taskId].tdCoeff = FADE_MON_STEP;
     }
     else
     {
         BlendPalette(OBJ_PLTT_ID(spritePalNum), 16, 16, gBallOpenFadeColors[ballId]);
         gTasks[taskId].tCoeff = 16;
-        gTasks[taskId].tdCoeff = -1;
+        gTasks[taskId].tdCoeff = -FADE_MON_STEP;
         gTasks[taskId].func = Task_FadeMon_ToNormal;
     }
 
-    BeginNormalPaletteFade(selectedPalettes, 0, 0, 16, RGB_WHITE);
+    BeginNormalPaletteFade(selectedPalettes, FADE_MON_DELAY, 0, 16, RGB_WHITE);
     return taskId;
 }
 
@@ -2061,7 +2067,7 @@ static void Task_FadeMon_ToBallColor(u8 taskId)
 {
     u8 ballId = gTasks[taskId].tBallId;
 
-    if (gTasks[taskId].tTimer <= 16)
+    if (gTasks[taskId].tTimer <= 16 / FADE_MON_STEP)
     {
         BlendPalette(OBJ_PLTT_ID(gTasks[taskId].tPalOffset), 16, gTasks[taskId].tCoeff, gBallOpenFadeColors[ballId]);
         gTasks[taskId].tCoeff += gTasks[taskId].tdCoeff;
@@ -2070,7 +2076,7 @@ static void Task_FadeMon_ToBallColor(u8 taskId)
     else if (!gPaletteFade.active)
     {
         u32 selectedPalettes = (u16)gTasks[taskId].tPaletteLo | ((u16)gTasks[taskId].tPaletteHi << 16);
-        BeginNormalPaletteFade(selectedPalettes, 0, 16, 0, RGB_WHITE);
+        BeginNormalPaletteFade(selectedPalettes, FADE_MON_DELAY, 16, 0, RGB_WHITE);
         DestroyTask(taskId);
     }
 }
@@ -2080,7 +2086,7 @@ static void Task_FadeMon_ToNormal(u8 taskId)
     if (!gPaletteFade.active)
     {
         u32 selectedPalettes = (u16)gTasks[taskId].tPaletteLo | ((u16)gTasks[taskId].tPaletteHi << 16);
-        BeginNormalPaletteFade(selectedPalettes, 0, 16, 0, RGB_WHITE);
+        BeginNormalPaletteFade(selectedPalettes, FADE_MON_DELAY, 16, 0, RGB_WHITE);
         gTasks[taskId].func = Task_FadeMon_ToNormal_Step;
     }
 }
@@ -2089,7 +2095,7 @@ static void Task_FadeMon_ToNormal_Step(u8 taskId)
 {
     u8 ballId = gTasks[taskId].tBallId;
 
-    if (gTasks[taskId].tTimer <= 16)
+    if (gTasks[taskId].tTimer <= 16 / FADE_MON_STEP)
     {
         BlendPalette(OBJ_PLTT_ID(gTasks[taskId].tPalOffset), 16, gTasks[taskId].tCoeff, gBallOpenFadeColors[ballId]);
         gTasks[taskId].tCoeff += gTasks[taskId].tdCoeff;

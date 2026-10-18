@@ -928,6 +928,19 @@ static void Task_HandleMonAnimation(u8 taskId)
 
         gTasks[taskId].tState++;
     }
+#if B_MON_ANIM_SPEED > 1
+    // Faster battle animations: step the animation extra times this frame
+    if (gMain.inBattle)
+    {
+        // Same as one AnimateSprites() pass for this sprite: motion, then frame/affine anim
+        for (i = 1; i < FB_MON_ANIM_SPEED && sprite->callback != SpriteCallbackDummy; i++)
+        {
+            sprite->callback(sprite);
+            if (sprite->inUse)
+                AnimateSprite(sprite);
+        }
+    }
+#endif
     if (sprite->callback == SpriteCallbackDummy)
     {
         sprite->data[0] = gTasks[taskId].tBattlerId;

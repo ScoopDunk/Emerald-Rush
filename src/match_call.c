@@ -1055,6 +1055,15 @@ static bool32 UpdateMatchCallMinutesCounter(void)
 static bool32 CheckMatchCallChance(void)
 {
     int callChance = 1;
+
+#if RUSH_NAV_CALLS_OPTION
+    // Emerald Rush: NAV CALLS option (off by default)
+    if (!gSaveBlock2Ptr->optionsNavCalls)
+        return FALSE;
+#elif RUSH_NO_MATCH_CALLS
+    return FALSE;
+#endif
+
     if (!GetMonData(&gPlayerParty[0], MON_DATA_SANITY_IS_EGG) && GetMonAbility(&gPlayerParty[0]) == ABILITY_LIGHTNING_ROD)
         callChance = 2;
 

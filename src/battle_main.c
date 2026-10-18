@@ -1860,13 +1860,68 @@ static void CB2_HandleStartMultiBattle(void)
     }
 }
 
+#if B_BATTLE_SPEED > 1 || B_MOVE_ANIM_SPEED > 1
+// Battle fast-forward (see B_BATTLE_SPEED): run the battle's logic, tasks,
+// sprites and text extra times this frame (palette fades stay normal speed). Button presses only
+// count once per frame, and it stops as soon as anything leaves the battle
+// screen (bag, party menu, end of battle).
+static void RunExtraBattleFrames(void)
+{
+    u32 i;
+
+    if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED))
+        return;
+
+    gMain.newKeys = 0;
+    gMain.newAndRepeatedKeys = 0;
+    // Move/status animations get an extra multiplier (B_MOVE_ANIM_SPEED)
+    for (i = 1; i < (u32)FB_BATTLE_SPEED * (gAnimScriptActive ? FB_MOVE_ANIM_SPEED : 1); i++)
+    {
+        if (gMain.callback1 != BattleMainCB1 || gMain.callback2 != BattleMainCB2)
+            break;
+        BattleMainCB1();
+        if (gMain.callback2 != BattleMainCB2)
+            break;
+        AnimateSprites();
+        RunTextPrinters();
+        // No UpdatePaletteFade() here: hardware fades count their finish in a
+        // 1-bit field that only VBlank clears, so a second update per frame
+        // overflows it and the fade never ends (e.g. coming back from the bag).
+        RunTasks();
+    }
+}
+#endif
+
+// FAST BATTLES option (see include/rush_speed.h)
+bool32 AreFastBattlesOn(void)
+{
+#if RUSH_FAST_BATTLES_OPTION
+    return !gSaveBlock2Ptr->optionsNormalBattles;
+#else
+    return TRUE;
+#endif
+}
+
 void BattleMainCB2(void)
 {
     AnimateSprites();
-    BuildOamBuffer();
-    RunTextPrinters();
-    UpdatePaletteFade();
-    RunTasks();
+#if B_BATTLE_SPEED > 1 || B_MOVE_ANIM_SPEED > 1
+    if (AreFastBattlesOn())
+    {
+        RunTextPrinters();
+        UpdatePaletteFade();
+        RunTasks();
+        RunExtraBattleFrames();
+        BuildOamBuffer();
+    }
+    else
+#endif
+    {
+        BuildOamBuffer();
+        RunTextPrinters();
+        UpdatePaletteFade();
+        RunTasks();
+    }
 
     if (JOY_HELD(B_BUTTON) && gBattleTypeFlags & BATTLE_TYPE_RECORDED && RecordedBattle_CanStopPlayback())
     {
@@ -2675,7 +2730,7 @@ static void SpriteCB_MoveWildMonToRight(struct Sprite *sprite)
 {
     if ((gIntroSlideFlags & 1) == 0)
     {
-        sprite->x2 += 2;
+        sprite->x2 += FB_INTRO_SLIDE_SPEED;
         if (sprite->x2 == 0)
         {
             sprite->callback = SpriteCB_WildMonShowHealthbox;
@@ -2857,7 +2912,7 @@ static void SpriteCB_BattleSpriteSlideLeft(struct Sprite *sprite)
 {
     if (!(gIntroSlideFlags & 1))
     {
-        sprite->x2 -= 2;
+        sprite->x2 -= FB_INTRO_SLIDE_SPEED;
         if (sprite->x2 == 0)
         {
             sprite->callback = SpriteCB_Idle;
@@ -5141,6 +5196,8 @@ static void HandleEndTurn_FinishBattle(void)
 
         RecordedBattle_SetPlaybackFinished();
         BeginFastPaletteFade(3);
+        if (!(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED)))
+            gPaletteFade.deltaY = FB_END_FADE_DELTA; // faster fade-out with FAST BATTLES
         FadeOutMapMusic(5);
         gBattleMainFunc = FreeResetData_ReturnToOvOrDoEvolutions;
         gCB2_AfterEvolution = BattleMainCB2;
@@ -5248,6 +5305,37 @@ static void ReturnFromBattleToOverworld(void)
     SetMainCallback2(gMain.savedCallback);
 }
 
+// Runs battle script commands back to back until one has to wait (for a
+// controller, a timer, or the script's end) or something hands control
+// elsewhere. Vanilla runs exactly one command per frame.
+void RunBattleScriptCommandsUntilWait(void)
+{
+    u32 i;
+
+    if (gBattleControllerExecFlags != 0)
+        return;
+
+    for (i = 0; i < FB_SCRIPT_COMMANDS_PER_FRAME || i == 0; i++)
+    {
+        const u8 *instr = gBattlescriptCurrInstr;
+        void (*mainFunc)(void) = gBattleMainFunc;
+        u8 actionFuncId = gCurrentActionFuncId;
+        u8 turnActionNumber = gCurrentTurnActionNumber;
+        u8 outcome = gBattleOutcome;
+
+        gBattleScriptingCommandsTable[gBattlescriptCurrInstr[0]]();
+
+        if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED)
+         || gBattleControllerExecFlags != 0
+         || gBattlescriptCurrInstr == instr
+         || gBattleMainFunc != mainFunc
+         || gCurrentActionFuncId != actionFuncId
+         || gCurrentTurnActionNumber != turnActionNumber
+         || gBattleOutcome != outcome)
+            break;
+    }
+}
+
 void RunBattleScriptCommands_PopCallbacksStack(void)
 {
     if (gCurrentActionFuncId == B_ACTION_TRY_FINISH || gCurrentActionFuncId == B_ACTION_FINISHED)
@@ -5258,13 +5346,11 @@ void RunBattleScriptCommands_PopCallbacksStack(void)
     }
     else
     {
-        if (gBattleControllerExecFlags == 0)
-            gBattleScriptingCommandsTable[gBattlescriptCurrInstr[0]]();
+        RunBattleScriptCommandsUntilWait();
     }
 }
 
 void RunBattleScriptCommands(void)
 {
-    if (gBattleControllerExecFlags == 0)
-        gBattleScriptingCommandsTable[gBattlescriptCurrInstr[0]]();
+    RunBattleScriptCommandsUntilWait();
 }
