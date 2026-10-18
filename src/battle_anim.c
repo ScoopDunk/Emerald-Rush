@@ -488,7 +488,10 @@ static void Cmd_end(void)
     }
 
     // Finish the sound effects.
-    if (IsSEPlaying())
+    // With faster move animations (B_MOVE_ANIM_SPEED) don't wait for them: the
+    // sound keeps playing in the background while the battle moves on.
+    if (IsSEPlaying() && !(FB_MOVE_ANIM_SPEED > 1 && gMain.inBattle
+                           && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED))))
     {
         if (++sSoundAnimFramesToWait <= 90) // Wait 90 frames, then halt the sound effect.
         {

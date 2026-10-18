@@ -2235,13 +2235,31 @@ void UpdateHealthboxAttribute(u8 healthboxSpriteId, struct Pokemon *mon, u8 elem
 #define B_EXPBAR_PIXELS 64
 #define B_HEALTHBAR_PIXELS 48
 
-s32 MoveBattleBar(u8 battler, u8 healthboxSpriteId, u8 whichBar, u8 unused)
+// How many bar steps to run per frame (see B_HP_BAR_SPEED / B_EXP_BAR_SPEED).
+// A health bar step is 1 HP (or 1 pixel when max HP is below the bar's width),
+// an EXP bar step is 1 pixel.
+static u32 GetBattleBarStepsPerFrame(u8 battler, u8 whichBar)
 {
-    s32 currentBarValue;
+    if (whichBar == HEALTH_BAR)
+    {
+        s32 maxHp = gBattleSpritesDataPtr->battleBars[battler].maxValue;
 
+        if (FB_HP_BAR_SPEED == 0)
+            return 1;
+        if (maxHp < B_HEALTHBAR_PIXELS)
+            return FB_HP_BAR_SPEED;
+        if (maxHp * FB_HP_BAR_SPEED / B_HEALTHBAR_PIXELS > 1)
+            return maxHp * FB_HP_BAR_SPEED / B_HEALTHBAR_PIXELS;
+        return 1;
+    }
+    return (FB_EXP_BAR_SPEED > 1) ? FB_EXP_BAR_SPEED : 1;
+}
+
+static s32 CalcNewBattleBarValue(u8 battler, u8 whichBar)
+{
     if (whichBar == HEALTH_BAR) // health bar
     {
-        currentBarValue = CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
+        return CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
                     gBattleSpritesDataPtr->battleBars[battler].oldValue,
                     gBattleSpritesDataPtr->battleBars[battler].receivedValue,
                     &gBattleSpritesDataPtr->battleBars[battler].currValue,
@@ -2256,11 +2274,28 @@ s32 MoveBattleBar(u8 battler, u8 healthboxSpriteId, u8 whichBar, u8 unused)
             expFraction = 1;
         expFraction = abs(gBattleSpritesDataPtr->battleBars[battler].receivedValue / expFraction);
 
-        currentBarValue = CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
+        return CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
                     gBattleSpritesDataPtr->battleBars[battler].oldValue,
                     gBattleSpritesDataPtr->battleBars[battler].receivedValue,
                     &gBattleSpritesDataPtr->battleBars[battler].currValue,
                     B_EXPBAR_PIXELS / 8, expFraction);
+    }
+}
+
+s32 MoveBattleBar(u8 battler, u8 healthboxSpriteId, u8 whichBar, u8 unused)
+{
+    s32 currentBarValue, nextValue;
+    u32 i, steps = GetBattleBarStepsPerFrame(battler, whichBar);
+
+    // Run several steps per frame. If the bar finishes partway through, report
+    // the final value this frame and -1 (done) on the next call, like vanilla.
+    currentBarValue = CalcNewBattleBarValue(battler, whichBar);
+    for (i = 1; i < steps && currentBarValue != -1; i++)
+    {
+        nextValue = CalcNewBattleBarValue(battler, whichBar);
+        if (nextValue == -1)
+            break;
+        currentBarValue = nextValue;
     }
 
     if (whichBar == EXP_BAR || (whichBar == HEALTH_BAR && !gBattleSpritesDataPtr->battlerData[battler].hpNumbersNoBars))

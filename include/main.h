@@ -71,6 +71,11 @@ void ClearPokemonCrySongs(void);
 void RestoreSerialTimer3IntrHandlers(void);
 void StartTimer1(void);
 void SeedRngAndSetTrainerId(void);
+void SeedRngFromBootTimer(void);
+
+#define FAST_SOFT_RESET_MAGIC 0x52534554 // "RSET"; also hard-coded in libagbsyscall/libagbsyscall.s
+extern u32 gFastSoftResetMagic;
+extern bool8 gFastSoftResetBoot;
 u16 GetGeneratedTrainerIdLower(void);
 
 #endif // GUARD_MAIN_H

@@ -4,6 +4,7 @@
 #include "scanline_effect.h"
 #include "task.h"
 #include "title_screen.h"
+#include "main_menu.h"
 #include "libgcnmultiboot.h"
 #include "malloc.h"
 #include "gpu_regs.h"
@@ -1157,6 +1158,21 @@ void CB2_InitCopyrightScreenAfterBootup(void)
         SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
         InitHeap(gHeap, HEAP_SIZE);
     }
+}
+
+// Emerald Rush fast soft reset: same save loading as the copyright screen does
+// on boot, then straight to the CONTINUE / NEW GAME menu.
+void CB2_InitMainMenuAfterSoftReset(void)
+{
+    SetSaveBlocksPointers(GetSaveBlocksPointersBaseOffset());
+    ResetMenuAndMonGlobals();
+    Save_ResetSaveCounters();
+    LoadGameSave(SAVE_NORMAL);
+    if (gSaveFileStatus == SAVE_STATUS_EMPTY || gSaveFileStatus == SAVE_STATUS_CORRUPT)
+        Sav2_ClearSetDefault();
+    SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
+    InitHeap(gHeap, HEAP_SIZE);
+    SetMainCallback2(CB2_InitMainMenu);
 }
 
 void CB2_InitCopyrightScreenAfterTitleScreen(void)

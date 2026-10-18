@@ -6800,6 +6800,16 @@ static void Task_PokemonSummaryAnimateAfterDelay(u8 taskId)
     }
 }
 
+// Emerald Rush: the POKéMON ANIM option (see RUSH_MON_ANIM_OPTION)
+bool32 AreMonAnimsDisabled(void)
+{
+#if RUSH_MON_ANIM_OPTION
+    return !gSaveBlock2Ptr->optionsMonAnims;
+#else
+    return FALSE;
+#endif
+}
+
 void BattleAnimateFrontSprite(struct Sprite *sprite, u16 species, bool8 noCry, u8 panMode)
 {
     if (gHitMarker & HITMARKER_NO_ANIMATIONS && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK)))
@@ -6823,7 +6833,7 @@ void DoMonFrontSpriteAnimation(struct Sprite *sprite, u16 species, bool8 noCry, 
         pan = 0;
         break;
     }
-    if (panModeAnimFlag & SKIP_FRONT_ANIM)
+    if (AreMonAnimsDisabled() || (panModeAnimFlag & SKIP_FRONT_ANIM))
     {
         // No animation, only check if cry needs to be played
         if (!noCry)
@@ -6844,7 +6854,9 @@ void DoMonFrontSpriteAnimation(struct Sprite *sprite, u16 species, bool8 noCry, 
             u8 taskId = CreateTask(Task_AnimateAfterDelay, 0);
             STORE_PTR_IN_TASK(sprite, taskId, 0);
             gTasks[taskId].sAnimId = sMonFrontAnimIdsTable[species - 1];
-            gTasks[taskId].sAnimDelay = sMonAnimationDelayTable[species - 1];
+            gTasks[taskId].sAnimDelay = sMonAnimationDelayTable[species - 1] / FB_MON_ANIM_SPEED;
+            if (gTasks[taskId].sAnimDelay == 0)
+                gTasks[taskId].sAnimDelay = 1;
         }
         else
         {
@@ -6857,6 +6869,12 @@ void DoMonFrontSpriteAnimation(struct Sprite *sprite, u16 species, bool8 noCry, 
 
 void PokemonSummaryDoMonAnimation(struct Sprite *sprite, u16 species, bool8 oneFrame)
 {
+    if (AreMonAnimsDisabled())
+    {
+        // Stay on the still frame; the dummy callback stops this being re-triggered
+        SetSpriteCB_MonAnimDummy(sprite);
+        return;
+    }
     if (!oneFrame && HasTwoFramesAnimation(species))
         StartSpriteAnim(sprite, 1);
     if (sMonAnimationDelayTable[species - 1] != 0)
@@ -6885,7 +6903,7 @@ void StopPokemonAnimationDelayTask(void)
 
 void BattleAnimateBackSprite(struct Sprite *sprite, u16 species)
 {
-    if (gHitMarker & HITMARKER_NO_ANIMATIONS && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK)))
+    if (AreMonAnimsDisabled() || (gHitMarker & HITMARKER_NO_ANIMATIONS && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))))
     {
         sprite->callback = SpriteCallbackDummy;
     }
@@ -6987,6 +7005,8 @@ const u8 *GetTrainerNameFromId(u16 trainerId)
 
 bool8 HasTwoFramesAnimation(u16 species)
 {
+    if (AreMonAnimsDisabled())
+        return FALSE;
     return (species != SPECIES_CASTFORM
          && species != SPECIES_DEOXYS
          && species != SPECIES_SPINDA

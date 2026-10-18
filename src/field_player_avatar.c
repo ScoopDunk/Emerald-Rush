@@ -648,7 +648,11 @@ static void PlayerNotOnBikeMoving(u8 direction, u16 heldKeys)
         }
     }
 
+#if RUSH_FAST_UNDERWATER
+    if (gPlayerAvatar.flags & (PLAYER_AVATAR_FLAG_SURFING | PLAYER_AVATAR_FLAG_UNDERWATER))
+#else
     if (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_SURFING)
+#endif
     {
         // same speed as running
         PlayerWalkFast(direction);

@@ -416,6 +416,10 @@ SoftReset:
 	ldr r1, =0x3007f00
 	mov sp, r1
 	svc #1
+	@ Emerald Rush fast soft reset: RAM is clear now, leave a note for the next boot
+	ldr r1, =gFastSoftResetMagic
+	ldr r2, =0x52534554
+	str r2, [r1]
 	svc #0
 	.pool
 	thumb_func_end SoftReset

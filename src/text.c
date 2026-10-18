@@ -316,6 +316,48 @@ bool16 AddTextPrinter(struct TextPrinterTemplate *printerTemplate, u8 speed, Tex
     return TRUE;
 }
 
+#if RUSH_INSTANT_TEXT
+// Instant text: keep rendering each printer until it has to wait (for a button
+// press, a scroll, or a delay) or finishes, so whole messages appear in one frame.
+// The window is copied to VRAM once per frame instead of once per glyph.
+void RunTextPrinters(void)
+{
+    int i;
+
+    if (gDisableTextPrinters)
+        return;
+
+    for (i = 0; i < WINDOWS_MAX; ++i)
+    {
+        bool32 printed = FALSE;
+        u16 renderCmd;
+
+        if (!sTextPrinters[i].active)
+            continue;
+
+        do
+        {
+            renderCmd = RenderFont(&sTextPrinters[i]);
+            switch (renderCmd)
+            {
+            case RENDER_PRINT:
+                printed = TRUE;
+                // fallthrough
+            case RENDER_UPDATE:
+                if (sTextPrinters[i].callback != NULL)
+                    sTextPrinters[i].callback(&sTextPrinters[i].printerTemplate, renderCmd);
+                break;
+            case RENDER_FINISH:
+                sTextPrinters[i].active = FALSE;
+                break;
+            }
+        } while (renderCmd == RENDER_PRINT && sTextPrinters[i].active);
+
+        if (printed)
+            CopyWindowToVram(sTextPrinters[i].printerTemplate.windowId, COPYWIN_GFX);
+    }
+}
+#else
 void RunTextPrinters(void)
 {
     int i;
@@ -343,6 +385,7 @@ void RunTextPrinters(void)
         }
     }
 }
+#endif // RUSH_INSTANT_TEXT
 
 bool16 IsTextPrinterActive(u8 id)
 {

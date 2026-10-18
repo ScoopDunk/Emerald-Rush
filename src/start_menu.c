@@ -1040,7 +1040,12 @@ static u8 SaveFileExistsCallback(void)
     }
     else
     {
+#if RUSH_NO_SAVE_OVERWRITE_PROMPT
+        // Same save file: skip "Is it okay to overwrite it?" and save right away
+        return SaveSavingMessageCallback();
+#else
         ShowSaveMessage(gText_AlreadySavedFile, SaveConfirmOverwriteCallback);
+#endif
     }
 
     return SAVE_IN_PROGRESS;

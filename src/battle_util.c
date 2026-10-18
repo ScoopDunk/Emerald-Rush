@@ -3807,8 +3807,7 @@ void ClearFuryCutterDestinyBondGrudge(u8 battler)
 
 void HandleAction_RunBattleScript(void) // identical to RunBattleScriptCommands
 {
-    if (gBattleControllerExecFlags == 0)
-        gBattleScriptingCommandsTable[*gBattlescriptCurrInstr]();
+    RunBattleScriptCommandsUntilWait();
 }
 
 u8 GetMoveTarget(u16 move, u8 setTarget)

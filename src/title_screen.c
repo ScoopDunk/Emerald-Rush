@@ -824,7 +824,12 @@ static void Task_TitleScreenPhase3(u8 taskId)
 static void CB2_GoToMainMenu(void)
 {
     if (!UpdatePaletteFade())
+    {
+#if RUSH_RNG_FIX
+        SeedRngFromBootTimer();
+#endif
         SetMainCallback2(CB2_InitMainMenu);
+    }
 }
 
 static void CB2_GoToCopyrightScreen(void)

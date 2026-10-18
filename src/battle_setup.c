@@ -14,6 +14,7 @@
 #include "starter_choose.h"
 #include "script_pokemon_util.h"
 #include "palette.h"
+#include "constants/rgb.h"
 #include "window.h"
 #include "event_object_movement.h"
 #include "event_scripts.h"
@@ -347,6 +348,7 @@ static const u16 sBadgeFlags[NUM_BADGES] =
 
 #define tState data[0]
 #define tTransition data[1]
+#define tFastFade data[2] // Emerald Rush: FAST BATTLES trainer battles skip the transition animation
 
 static void Task_BattleStart(u8 taskId)
 {
@@ -357,13 +359,28 @@ static void Task_BattleStart(u8 taskId)
     case 0:
         if (!FldEffPoison_IsActive()) // is poison not active?
         {
+            if (tFastFade)
+            {
+                // Quick fade to black instead of the transition animation
+                gMain.callback2 = CB2_OverworldBasic;
+                SetWeatherScreenFadeOut();
+                CpuCopy32(gPlttBufferFaded, gPlttBufferUnfaded, PLTT_SIZE);
+                BeginNormalPaletteFade(PALETTES_ALL, -2, 0, 16, RGB_BLACK);
+                ClearMirageTowerPulseBlendEffect();
+                tState = 2;
+                break;
+            }
             BattleTransition_StartOnField(tTransition);
             ClearMirageTowerPulseBlendEffect();
             tState++; // go to case 1.
         }
         break;
+    case 2:
+        if (gPaletteFade.active)
+            break;
+        // fall through: faded to black, start the battle
     case 1:
-        if (IsBattleTransitionDone() == TRUE)
+        if (tState == 2 || IsBattleTransitionDone() == TRUE)
         {
             CleanupOverworldWindowsAndTilemaps();
             SetMainCallback2(CB2_InitBattle);
@@ -375,16 +392,25 @@ static void Task_BattleStart(u8 taskId)
     }
 }
 
-static void CreateBattleStartTask(u8 transition, u16 song)
+static u8 CreateBattleStartTask(u8 transition, u16 song)
 {
     u8 taskId = CreateTask(Task_BattleStart, 1);
 
     gTasks[taskId].tTransition = transition;
     PlayMapChosenOrBattleBGM(song);
+    return taskId;
+}
+
+// Emerald Rush: trainer battles skip the transition animation with FAST BATTLES
+static void CreateTrainerBattleStartTask(u8 transition)
+{
+    u8 taskId = CreateBattleStartTask(transition, 0);
+    gTasks[taskId].tFastFade = AreFastBattlesOn();
 }
 
 #undef tState
 #undef tTransition
+#undef tFastFade
 
 void BattleSetup_StartWildBattle(void)
 {
@@ -458,7 +484,7 @@ static void DoBattlePikeWildBattle(void)
 
 static void DoTrainerBattle(void)
 {
-    CreateBattleStartTask(GetTrainerBattleTransition(), 0);
+    CreateTrainerBattleStartTask(GetTrainerBattleTransition());
     IncrementGameStat(GAME_STAT_TOTAL_BATTLES);
     IncrementGameStat(GAME_STAT_TRAINER_BATTLES);
     TryUpdateGymLeaderRematchFromTrainer();
@@ -467,9 +493,9 @@ static void DoTrainerBattle(void)
 static void DoBattlePyramidTrainerHillBattle(void)
 {
     if (CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE)
-        CreateBattleStartTask(GetSpecialBattleTransition(B_TRANSITION_GROUP_B_PYRAMID), 0);
+        CreateTrainerBattleStartTask(GetSpecialBattleTransition(B_TRANSITION_GROUP_B_PYRAMID));
     else
-        CreateBattleStartTask(GetSpecialBattleTransition(B_TRANSITION_GROUP_TRAINER_HILL), 0);
+        CreateTrainerBattleStartTask(GetSpecialBattleTransition(B_TRANSITION_GROUP_TRAINER_HILL));
 
     IncrementGameStat(GAME_STAT_TOTAL_BATTLES);
     IncrementGameStat(GAME_STAT_TRAINER_BATTLES);

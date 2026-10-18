@@ -17,6 +17,25 @@ static void BattleIntroSlide3(u8);
 static void BattleIntroSlideLink(u8);
 static void BattleIntroSlidePartner(u8);
 
+// Battle intro speed (see include/rush_config.h). Vanilla timings assume a slide
+// speed of 2, so frame counts are scaled by 2 / B_INTRO_SLIDE_SPEED.
+#define INTRO_FRAMES(n)     (((n) * 2 / FB_INTRO_SLIDE_SPEED) > 0 ? ((n) * 2 / FB_INTRO_SLIDE_SPEED) : 1)
+#define INTRO_STEP(n)       (((n) * FB_INTRO_SLIDE_SPEED / 2) > 0 ? ((n) * FB_INTRO_SLIDE_SPEED / 2) : 1)
+#define INTRO_WIN_OPEN_STEP (0xFF * FB_INTRO_WINDOW_SPEED)
+
+static void MoveBg1YTowards(s16 target, s16 step)
+{
+    s16 y = gBattle_BG1_Y;
+
+    if (y > target)
+    {
+        y -= step;
+        if (y < target)
+            y = target;
+        gBattle_BG1_Y = y;
+    }
+}
+
 static const TaskFunc sBattleIntroSlideFuncs[] =
 {
     [BATTLE_ENVIRONMENT_GRASS]      = BattleIntroSlide1,
@@ -110,12 +129,12 @@ static void BattleIntroSlide1(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= INTRO_WIN_OPEN_STEP;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
             gTasks[taskId].data[2] = DISPLAY_WIDTH;
-            gTasks[taskId].data[3] = 32;
+            gTasks[taskId].data[3] = INTRO_FRAMES(32);
             gIntroSlideFlags &= ~1;
         }
         break;
@@ -128,13 +147,11 @@ static void BattleIntroSlide1(u8 taskId)
         {
             if (gTasks[taskId].tEnvironment == BATTLE_ENVIRONMENT_LONG_GRASS)
             {
-                if (gBattle_BG1_Y != (u16)(-80))
-                    gBattle_BG1_Y -= 2;
+                MoveBg1YTowards(-80, INTRO_STEP(2));
             }
             else
             {
-                if (gBattle_BG1_Y != (u16)(-56))
-                    gBattle_BG1_Y -= 1;
+                MoveBg1YTowards(-56, INTRO_STEP(1));
             }
         }
 
@@ -142,7 +159,7 @@ static void BattleIntroSlide1(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= FB_INTRO_SLIDE_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -218,12 +235,12 @@ static void BattleIntroSlide2(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= INTRO_WIN_OPEN_STEP;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
             gTasks[taskId].data[2] = DISPLAY_WIDTH;
-            gTasks[taskId].data[3] = 32;
+            gTasks[taskId].data[3] = INTRO_FRAMES(32);
             gTasks[taskId].data[5] = 1;
             gIntroSlideFlags &= ~1;
         }
@@ -243,7 +260,7 @@ static void BattleIntroSlide2(u8 taskId)
             if ((gTasks[taskId].data[4] & 0x1F) && --gTasks[taskId].data[5] == 0)
             {
                 gTasks[taskId].data[4] += 0xFF;
-                gTasks[taskId].data[5] = 4;
+                gTasks[taskId].data[5] = INTRO_FRAMES(4);
             }
         }
 
@@ -251,7 +268,7 @@ static void BattleIntroSlide2(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= FB_INTRO_SLIDE_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -311,12 +328,12 @@ static void BattleIntroSlide3(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= INTRO_WIN_OPEN_STEP;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
             gTasks[taskId].data[2] = DISPLAY_WIDTH;
-            gTasks[taskId].data[3] = 32;
+            gTasks[taskId].data[3] = INTRO_FRAMES(32);
             gTasks[taskId].data[5] = 1;
             gIntroSlideFlags &= ~1;
         }
@@ -331,7 +348,7 @@ static void BattleIntroSlide3(u8 taskId)
             if ((gTasks[taskId].data[4] & 0xF) && --gTasks[taskId].data[5] == 0)
             {
                 gTasks[taskId].data[4] += 0xFF;
-                gTasks[taskId].data[5] = 6;
+                gTasks[taskId].data[5] = INTRO_FRAMES(6);
             }
         }
 
@@ -339,7 +356,7 @@ static void BattleIntroSlide3(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= FB_INTRO_SLIDE_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -407,12 +424,12 @@ static void BattleIntroSlideLink(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= INTRO_WIN_OPEN_STEP;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
             gTasks[taskId].data[2] = DISPLAY_WIDTH;
-            gTasks[taskId].data[3] = 32;
+            gTasks[taskId].data[3] = INTRO_FRAMES(32);
             gIntroSlideFlags &= ~1;
         }
         break;
@@ -421,7 +438,7 @@ static void BattleIntroSlideLink(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= FB_INTRO_SLIDE_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -485,7 +502,7 @@ static void BattleIntroSlidePartner(u8 taskId)
             gBattle_WIN0V += 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= FB_INTRO_SLIDE_SPEED;
 
         gBattle_BG1_X = gTasks[taskId].data[2];
         gBattle_BG2_X = -gTasks[taskId].data[2];

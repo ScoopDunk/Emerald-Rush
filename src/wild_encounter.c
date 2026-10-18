@@ -4,6 +4,8 @@
 #include "battle_pyramid.h"
 #include "event_data.h"
 #include "fieldmap.h"
+#include "item_menu.h"
+#include "item_use.h"
 #include "field_player_avatar.h"
 #include "link.h"
 #include "metatile_behavior.h"
@@ -23,6 +25,7 @@
 #include "constants/weather.h"
 
 extern const u8 EventScript_RepelWoreOff[];
+extern const u8 EventScript_RepelWoreOffPrompt[];
 
 #define MAX_ENCOUNTER_RATE 2880
 
@@ -858,15 +861,27 @@ bool8 UpdateRepelCounter(void)
 
     steps = VarGet(VAR_REPEL_STEP_COUNT);
 
-    if (steps != 0)
+    if (REPEL_STEPS(steps) != 0)
     {
         steps--;
+#if RUSH_REPEL_PROMPT
+        if (REPEL_STEPS(steps) == 0)
+        {
+            // Remember which Repel it was so the script can offer another
+            gSpecialVar_ItemId = REPEL_ITEM(steps);
+            VarSet(VAR_REPEL_STEP_COUNT, 0);
+            ScriptContext_SetupScript(EventScript_RepelWoreOffPrompt);
+            return TRUE;
+        }
+        VarSet(VAR_REPEL_STEP_COUNT, steps);
+#else
         VarSet(VAR_REPEL_STEP_COUNT, steps);
         if (steps == 0)
         {
             ScriptContext_SetupScript(EventScript_RepelWoreOff);
             return TRUE;
         }
+#endif
     }
     return FALSE;
 }
@@ -875,7 +890,7 @@ static bool8 IsWildLevelAllowedByRepel(u8 wildLevel)
 {
     u8 i;
 
-    if (!VarGet(VAR_REPEL_STEP_COUNT))
+    if (!REPEL_STEPS(VarGet(VAR_REPEL_STEP_COUNT)))
         return TRUE;
 
     for (i = 0; i < PARTY_SIZE; i++)

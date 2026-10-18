@@ -1,6 +1,19 @@
 #ifndef GUARD_ITEM_USE_H
 #define GUARD_ITEM_USE_H
 
+// VAR_REPEL_STEP_COUNT layout. With RUSH_REPEL_PROMPT the low byte is the steps
+// left and the high byte is the Repel item that was used.
+#if RUSH_REPEL_PROMPT
+#define REPEL_STEPS(var)            ((var) & 0xFF)
+#define REPEL_ITEM(var)             ((var) >> 8)
+#define REPEL_VAR(item, steps)      (((item) << 8) | ((steps) & 0xFF))
+#else
+#define REPEL_STEPS(var)            (var)
+#define REPEL_VAR(item, steps)      (steps)
+#endif
+
+void UseRepelOnField(void);
+
 void ItemUseOutOfBattle_Mail(u8 taskId);
 void ItemUseOutOfBattle_Bike(u8 taskId);
 void ItemUseOutOfBattle_Rod(u8 taskId);
